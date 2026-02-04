@@ -13,7 +13,7 @@ class UserSeeder extends Seeder
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         $superAdmin = User::firstOrCreate(
-            ['email' => 'super_admin@okulumukodluyorum.com'],
+            ['email' => 'super_admin@blog.com'],
             [
                 'name' => 'Super',
                 'surname' => 'Admin',
