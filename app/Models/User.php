@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Filament\Panel;
 use Illuminate\Support\Str;
+use App\Casts\TitleCaseCast;
 use App\Traits\SpatieActivityLogTrait;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Notifications\Notifiable;
@@ -30,6 +31,7 @@ class User extends Authenticatable
         'username',
         'email',
         'password',
+        'is_active',
     ];
 
     /**
@@ -53,13 +55,20 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'name' => TitleCaseCast::class,
+            'surname' => TitleCaseCast::class,
         ];
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'username';
     }
 
     protected function fullName(): Attribute
     {
         return Attribute::make(
-            get: fn() => Str::title("$this->name $this->surname"),
+            get: fn() => "$this->name $this->surname",
         );
     }
 
