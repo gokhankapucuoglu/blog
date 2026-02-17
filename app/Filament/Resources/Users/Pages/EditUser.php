@@ -3,10 +3,11 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Models\User;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Auth;
 
 class EditUser extends EditRecord
 {
@@ -20,9 +21,15 @@ class EditUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
-            ForceDeleteAction::make(),
-            RestoreAction::make(),
+            DeleteAction::make()
+                ->icon('heroicon-m-trash')
+                ->hiddenLabel()
+                ->tooltip(fn(User $record) => $record->id === Auth::id() ? 'Kendi hesabınızı silemezsiniz.' : 'Sil')
+                ->disabled(fn(User $record) => $record->id === Auth::id()),
+            RestoreAction::make()
+                ->icon('heroicon-m-arrow-uturn-left')
+                ->hiddenLabel()
+                ->tooltip('Geri Yükle'),
         ];
     }
 }

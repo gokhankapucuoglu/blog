@@ -4,16 +4,17 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-use Filament\Panel;
-use Illuminate\Support\Str;
 use App\Casts\TitleCaseCast;
 use App\Traits\SpatieActivityLogTrait;
-use Spatie\Permission\Traits\HasRoles;
-use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
@@ -58,6 +59,19 @@ class User extends Authenticatable
             'name' => TitleCaseCast::class,
             'surname' => TitleCaseCast::class,
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user) {
+            if ($user->id === Auth::id()) {
+                throw new \Exception('Güvenlik ihlali: Kendi hesabınızı silemezsiniz!');
+            }
+
+            if ($user->id === 1) {
+                throw new \Exception('Sistem hesabı silinemez!');
+            }
+        });
     }
 
     public function getRouteKeyName(): string

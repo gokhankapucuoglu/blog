@@ -16,7 +16,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
-use Filament\Actions\ForceDeleteBulkAction;
 use Illuminate\Database\Eloquent\Collection;
 
 class UsersTable
@@ -93,16 +92,16 @@ class UsersTable
             ])
             ->recordActions([
                 EditAction::make()
-                    ->label('')
+                    ->hiddenLabel()
                     ->size('lg')
                     ->tooltip('Düzenle'),
                 DeleteAction::make()
-                    ->label('')
+                    ->hiddenLabel()
                     ->size('lg')
                     ->tooltip(fn(User $record) => $record->id === Auth::id() ? 'Kendi hesabınızı silemezsiniz.' : 'Sil')
                     ->disabled(fn(User $record) => $record->id === Auth::id()),
                 RestoreAction::make()
-                    ->label('')
+                    ->hiddenLabel()
                     ->size('lg')
                     ->tooltip('Geri Yükle'),
             ])
@@ -111,20 +110,20 @@ class UsersTable
                     DeleteBulkAction::make()
                         ->successNotification(null)
                         ->action(function (Collection $records) {
-                            $records->each(function ($record) {
-                                if ($record->id !== Auth::id()) {
-                                    $record->delete();
-                                }
-                            });
+                            $others = $records->reject(fn($user) => $user->id === Auth::id());
 
-                            if ($records->contains('id', Auth::id())) {
+                            $others->each->delete();
+
+                            if ($records->count() !== $others->count()) {
                                 Notification::make()
-                                    ->title('Diğer kullanıcılar silindi, ancak kendi hesabınız güvenlik gereği silinmedi!')
-                                    ->success()
+                                    ->title('Diğer kullanıcılar silindi.')
+                                    ->body('Güvenlik gereği kendi hesabınız silinmedi.')
+                                    ->warning()
+                                    ->persistent()
                                     ->send();
                             } else {
                                 Notification::make()
-                                    ->title('Seçilenler silindi')
+                                    ->title('Seçilen tüm kullanıcılar silindi')
                                     ->success()
                                     ->send();
                             }
