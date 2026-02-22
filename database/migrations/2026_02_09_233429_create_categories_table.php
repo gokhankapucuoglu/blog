@@ -13,13 +13,20 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
+
+            // İlişkiler
             $table->foreignId('parent_id')->nullable()->constrained('categories')->nullOnDelete();
+
+            // İçerik Alanları
             $table->string('icon')->nullable();
             $table->string('name');
             $table->string('slug');
             $table->text('description')->nullable();
+
+            // Durum ve Sıralama
             $table->integer('order')->default(0);
-            $table->boolean('is_visible')->default(true);
+            $table->boolean('status')->default(true);
+
             $table->timestamps();
             $table->softDeletes();
 

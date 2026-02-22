@@ -21,6 +21,7 @@ class CategoryResource extends Resource
     protected static ?string $model = Category::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Squares2x2;
+    protected static ?string $navigationParentItem = 'Gönderiler';
     protected static ?string $pluralModelLabel = 'Kategoriler';
     protected static ?string $modelLabel = 'Kategori';
 

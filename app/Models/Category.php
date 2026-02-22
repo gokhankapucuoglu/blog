@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\SentenceCaseCast;
+use App\Models\Post;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,15 +22,15 @@ class Category extends Model
         'slug',
         'description',
         'order',
-        'is_visible',
+        'status',
     ];
 
     protected function casts(): array
     {
         return [
-            'description' => SentenceCaseCast::class,
-            'order' => 'integer',
-            'is_visible' => 'boolean',
+            'description'   => SentenceCaseCast::class,
+            'order'         => 'integer',
+            'status'        => 'boolean',
         ];
     }
 
@@ -40,6 +41,11 @@ class Category extends Model
                 throw new \Exception('Veri Bütünlüğü Hatası: Alt kategorisi olan bir kategori silinemez.');
             }
         });
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
     }
 
     public function getSlugOptions(): SlugOptions
@@ -87,5 +93,10 @@ class Category extends Model
         }
 
         return implode(' > ', $path);
+    }
+
+    public function posts(): HasMany
+    {
+        return $this->hasMany(Post::class);
     }
 }

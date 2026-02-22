@@ -9,6 +9,7 @@ use App\Traits\SpatieActivityLogTrait;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -32,7 +33,7 @@ class User extends Authenticatable
         'username',
         'email',
         'password',
-        'is_active',
+        'status',
     ];
 
     /**
@@ -54,10 +55,10 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
-            'name' => TitleCaseCast::class,
-            'surname' => TitleCaseCast::class,
+            'password'          => 'hashed',
+            'status'            => 'boolean',
+            'name'              => TitleCaseCast::class,
+            'surname'           => TitleCaseCast::class,
         ];
     }
 
@@ -88,7 +89,7 @@ class User extends Authenticatable
 
     public function canAccessPanel(Panel $panel): bool
     {
-        if (! $this->is_active) {
+        if (! $this->status) {
             return false;
         }
 
@@ -97,5 +98,10 @@ class User extends Authenticatable
         }
 
         return false;
+    }
+
+    public function posts(): HasMany
+    {
+        return $this->hasMany(Post::class);
     }
 }

@@ -28,7 +28,7 @@ class EditCategory extends EditRecord
                         return 'Bu kategoriye bağlı alt kategoriler var. Önce onları silmelisiniz.';
                     }
 
-                    return 'Kategoriyi Sil';
+                    return 'Sil';
                 })
                 ->disabled(fn(Category $record) => $record->children()->exists()),
             RestoreAction::make()

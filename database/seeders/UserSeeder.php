@@ -20,10 +20,24 @@ class UserSeeder extends Seeder
                 'username' => 'super_admin',
                 'password' => 'GokhaN2635!',
                 'email_verified_at' => now(),
-                'is_active' => true,
+                'status' => true,
             ]
         );
 
         $superAdmin->assignRole('super_admin');
+
+        $author = User::firstOrCreate(
+            ['email' => 'author@blog.com'],
+            [
+                'name' => 'Author',
+                'surname' => 'User',
+                'username' => 'author_user',
+                'password' => 'GokhaN2635!',
+                'email_verified_at' => now(),
+                'status' => true,
+            ]
+        );
+
+        $author->assignRole('author');
     }
 }

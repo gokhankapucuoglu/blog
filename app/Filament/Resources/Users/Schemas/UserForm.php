@@ -56,25 +56,29 @@ class UserForm
                                 ->placeholder(fn(string $operation): ?string => $operation === 'create' ? null : 'Değiştirmek istemiyorsanız boş bırakın')
                                 ->required(fn(string $context): bool => $context === 'create')
                                 ->minLength(8)
+                                ->regex('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).+$/')
                                 ->password()
                                 ->revealable()
+                                ->confirmed()
+                                ->live(onBlur: true)
                                 ->dehydrated(fn($state) => filled($state))
                                 ->validationMessages([
-                                    'min:8' => ':attribute en az :min karakter olmalıdır.',
-                                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/' => ':attribute en az 1 büyük harf, 1 küçük harf, 1 rakam ve 1 özel karakter içermelidir.',
+                                    'required' => ':attribute zorunludur.',
+                                    'min' => ':attribute en az :min karakter olmalıdır.',
+                                    'regex' => ':attribute en az 1 büyük harf, 1 küçük harf, 1 rakam ve 1 özel karakter içermelidir.',
+                                    'confirmed' => ':attribute doğrulaması eşleşmiyor.',
                                 ]),
                             TextInput::make('password_confirmation')
                                 ->label('Şifre Tekrar')
                                 ->prefixIcon('heroicon-m-lock-closed')
                                 ->placeholder(fn(string $operation): ?string => $operation === 'create' ? null : 'Değiştirmek istemiyorsanız boş bırakın')
-                                ->required(fn(string $context): bool => $context === 'create')
-                                ->dehydrated(false)
+                                ->required(fn(string $operation, Get $get): bool => $operation === 'create' || filled($get('password')))->saved(false)
                                 ->same('password')
                                 ->password()
                                 ->revealable()
                                 ->validationMessages([
-                                    'same' => 'Şifre alanı ile eşleşmelidir.',
                                     'required' => ':attribute zorunludur.',
+                                    'same' => 'Şifre alanı ile eşleşmelidir.',
                                 ]),
                             Select::make('roles')
                                 ->relationship('roles', 'name')
@@ -125,16 +129,16 @@ class UserForm
                         Section::make('Durum')
                             ->icon('heroicon-m-information-circle')
                             ->schema([
-                                Toggle::make('is_active')
+                                Toggle::make('status')
                                     ->live()
-                                    ->label(fn(Get $get): string => $get('is_active') ? 'Aktif' : 'Pasif')
+                                    ->label(fn(Get $get): string => $get('status') ? 'Aktif' : 'Pasif')
                                     ->default(true)
-                                    ->onIcon('heroicon-m-check')
+                                    ->onIcon('heroicon-m-lock-open')
                                     ->offIcon('heroicon-m-lock-closed')
                                     ->onColor('success')
                                     ->offColor('gray')
                                     ->helperText(
-                                        fn(Get $get): string => $get('is_active')
+                                        fn(Get $get): string => $get('status')
                                             ? 'Şu an kullanıcı sisteme giriş yapabilir.'
                                             : 'Kullanıcı engellenmiştir, giriş yapamaz.'
                                     )

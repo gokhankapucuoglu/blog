@@ -58,8 +58,8 @@ class UsersTable
                 TextColumn::make('email')
                     ->label('Email')
                     ->searchable(),
-                IconColumn::make('is_active')
-                    ->label('Aktif Mi?')
+                IconColumn::make('status')
+                    ->label('Durum')
                     ->boolean()
                     ->sortable(),
                 TextColumn::make('created_at')
@@ -83,8 +83,8 @@ class UsersTable
             ])
             ->filters([
                 TrashedFilter::make(),
-                SelectFilter::make('is_active')
-                    ->label('Aktiflik Durumu')
+                SelectFilter::make('status')
+                    ->label('Durum')
                     ->options([
                         1 => 'Aktif',
                         0 => 'Pasif',

@@ -14,7 +14,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Guava\IconPicker\Forms\Components\IconPicker;
 
 class CategoryForm
 {
@@ -128,9 +127,9 @@ class CategoryForm
                                     'numeric' => ':attribute sayısal bir değer olmalıdır.',
                                     'min' => ':attribute en az :min olmalıdır.',
                                 ]),
-                            Toggle::make('is_visible')
+                            Toggle::make('status')
                                 ->live()
-                                ->label(fn(Get $get): string => $get('is_visible') ? 'Görünür' : 'Gizli')
+                                ->label(fn(Get $get): string => $get('status') ? 'Görünür' : 'Gizli')
                                 ->default(true)
                                 ->onIcon('heroicon-m-eye')
                                 ->offIcon('heroicon-m-eye-slash')

@@ -7,11 +7,9 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\TrashedFilter;
@@ -48,7 +46,7 @@ class CategoriesTable
                     ->sortable(query: function ($query, string $direction) {
                         return $query->orderBy('parent_id', $direction);
                     }),
-                ToggleColumn::make('is_visible')
+                ToggleColumn::make('status')
                     ->label('Durum')
                     ->onIcon('heroicon-m-eye')
                     ->offIcon('heroicon-m-eye-slash')
