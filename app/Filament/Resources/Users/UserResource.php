@@ -15,6 +15,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class UserResource extends Resource
 {
@@ -62,5 +63,28 @@ class UserResource extends Resource
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery()
+            ->withoutGlobalScopes([SoftDeletingScope::class]);
+
+        $authUser = Auth::user();
+
+        // 1. Super Admin geri kalan herkesi görür
+        if ($authUser?->hasRole('super_admin')) {
+            return $query;
+        }
+
+        // 3. Düz Admin ise, listede Super Admin'leri de göremesin
+        if ($authUser?->hasRole('admin')) {
+            return $query
+                ->whereDoesntHave('roles', function ($q) {
+                    $q->where('name', 'super_admin');
+                });
+        }
+
+        return $query;
     }
 }

@@ -2,34 +2,49 @@
 
 namespace App\Filament\Resources\Posts\Tables;
 
+use App\Filament\Resources\Posts\PostResource;
 use App\Models\Post;
-use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteBulkAction;
-use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
+use App\Filament\Resources\Posts\Actions\PostActions;
+use Filament\Actions\Action;
 
 class PostsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->recordUrl(
+                fn(Post $record): string => PostResource::getUrl('view', ['record' => $record]),
+            )
             ->modifyQueryUsing(function ($query) {
-                if (Auth::user()?->hasRole(['super_admin', 'admin'])) {
+                $user = Auth::user();
+
+                if ($user?->hasRole('super_admin')) {
                     return $query;
                 }
-                return $query->where('user_id', Auth::id());
+
+                if ($user?->hasRole('admin')) {
+                    return $query->where(function ($q) use ($user) {
+                        $q->where('user_id', $user->id)
+                            ->orWhereHas('user', function ($userQuery) {
+                                $userQuery->whereDoesntHave('roles', function ($roleQuery) {
+                                    $roleQuery->whereIn('name', ['super_admin', 'admin']);
+                                });
+                            });
+                    });
+                }
+
+                return $query->where('user_id', $user->id);
             })
             ->columns([
                 ImageColumn::make('image')
@@ -37,55 +52,60 @@ class PostsTable
                     ->disk('public')
                     ->defaultImageUrl('https://ui-avatars.com/api/?name=Gorsel+Yok&color=7F9CF5&background=EBF4FF')
                     ->width(120),
-                TextColumn::make('title')
-                    ->label('Başlık')
-                    ->searchable()
-                    ->sortable()
-                    ->wrap()
-                    ->weight('bold'),
                 TextColumn::make('category.name')
                     ->label('Kategori')
                     ->searchable()
                     ->sortable()
-                    ->badge()
-                    ->color('info'),
-                TextColumn::make('user.full_name')
-                    ->label('Yazar')
+                    ->limit(15),
+                TextColumn::make('title')
+                    ->label('Başlık')
                     ->searchable()
                     ->sortable()
-                    ->icon('heroicon-m-user-circle')
+                    ->limit(30),
+                TextColumn::make('user.full_name')
+                    ->label('Yazar')
+                    ->searchable(['name', 'surname'])
+                    ->sortable(['name', 'surname'])
                     ->color('gray')
-                    ->visible(fn() => Auth::user()?->hasRole(['super_admin', 'admin'])),
+                    ->visible(function ($livewire) {
+                        if (! Auth::user()?->hasRole(['super_admin', 'admin'])) {
+                            return false;
+                        }
+
+                        if (property_exists($livewire, 'activeTab') && $livewire->activeTab === 'my_posts') {
+                            return false;
+                        }
+
+                        return true;
+                    }),
+                TextColumn::make('published_at')
+                    ->label('Yayın/Plan Tarihi')
+                    ->badge()
+                    ->icon(fn(Post $record): string => $record->status_icon)
+                    ->color(fn(Post $record): string => $record->status_color)
+                    ->date('Y-m-d')
+                    ->sortable(),
                 TextColumn::make('status')
                     ->label('Durum')
                     ->badge()
-                    ->state(function (Post $record): string {
-                        if ($record->status === 2 && $record->published_at?->isFuture()) {
-                            return 'Zamanlandı';
-                        }
-
-                        return match ($record->status) {
-                            0 => 'Taslak',
-                            1 => 'Onay Bekliyor',
-                            2 => 'Yayında',
-                            3 => 'Reddedildi',
-                            default => 'Bilinmiyor',
-                        };
-                    })
-                    ->color(fn(string $state): string => match ($state) {
-                        'Yayında' => 'success',
-                        'Zamanlandı' => 'warning',
-                        'Onay Bekliyor' => 'info',
-                        'Reddedildi' => 'danger',
-                        default => 'gray',
-                    })
+                    ->icon(fn(Post $record): string => $record->status_icon)
+                    ->formatStateUsing(fn(Post $record): string => $record->status_label)
+                    ->color(fn(Post $record): string => $record->status_color)
                     ->sortable(),
                 TextColumn::make('view_count')
-                    ->label('Okunma Sayısı')
+                    ->label('Görüntülenme')
+                    ->color('info')
                     ->icon('heroicon-m-eye')
+                    ->iconColor('info')
                     ->sortable()
-                    ->badge()
-                    ->color('gray'),
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('like_count')
+                    ->label('Beğeni')
+                    ->color('danger')
+                    ->icon('heroicon-m-heart')
+                    ->iconColor('danger')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 ToggleColumn::make('is_featured')
                     ->label('Öne Çıkan')
                     ->onIcon('heroicon-m-star')
@@ -100,14 +120,12 @@ class PostsTable
                             ->success()
                             ->send();
                     })
-                    ->visible(fn() => Auth::user()?->hasRole(['super_admin', 'admin'])),
-                TextColumn::make('published_at')
-                    ->label('Yayın Tarihi')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable(),
+                    ->visible(fn() => Auth::user()?->hasRole(['super_admin', 'admin']))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
-                    ->label('Oluşturulma')
-                    ->dateTime('d/m/Y')
+                    ->label('Oluşturulma Tarihi')
+                    ->dateTime()
+                    ->formatStateUsing(fn($state) => $state ? $state->format('d/m/Y H:i') : '-')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -115,29 +133,32 @@ class PostsTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
-                Action::make('approve')
-                    ->label('Onayla')
-                    ->icon('heroicon-m-check-badge')
-                    ->color('success')
-                    ->hiddenLabel()
-                    ->tooltip('Yazıyı Onayla ve Yayınla')
-                    // Sadece Adminlere ve sadece durumu "Onay Bekliyor" (1) olanlara görünür
-                    ->visible(
-                        fn(Post $record) =>
-                        Auth::user()?->hasRole(['super_admin', 'admin']) && $record->status === 1
-                    )
-                    ->action(function (Post $record) {
-                        $record->update(['status' => 2]);
-                        Notification::make()
-                            ->title('İşlem Başarılı')
-                            ->body("*{$record->title}* onaylandı ve yayına alındı.")
-                            ->success()
-                            ->send();
-                    }),
-                EditAction::make()
-                    ->hiddenLabel()
-                    ->tooltip('Düzenle')
-                    ->size('lg'),
+                ActionGroup::make([
+                    ViewAction::make(),
+                    PostActions::sendToApproval(Action::class),
+                    PostActions::approve(Action::class),
+                    PostActions::publishNow(Action::class),
+                    PostActions::reject(Action::class),
+                    PostActions::unpublish(Action::class),
+                    EditAction::make()
+                        ->visible(function (Post $record) {
+                            $user = Auth::user();
+                            $isAdmin = $user?->hasRole(['super_admin', 'admin']);
+                            $isOwner = $user?->id === $record->user_id;
+
+                            // Admin her zaman düzenleyebilir. Yazar sadece taslak ve ret ise düzenleyebilir.
+                            return $isAdmin || ($isOwner && in_array($record->status, [0, 3]));
+                        }),
+                    DeleteAction::make()
+                        ->visible(function (Post $record) {
+                            $user = Auth::user();
+                            $isAdmin = $user?->hasRole(['super_admin', 'admin']);
+                            $isOwner = $user?->id === $record->user_id;
+
+                            // Admin her zaman silebilir. Yazar sadece taslak ve ret ise silebilir.
+                            return $isAdmin || ($isOwner && in_array($record->status, [0, 3]));
+                        }),
+                ]),
             ]);
     }
 }

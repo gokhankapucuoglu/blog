@@ -42,7 +42,7 @@ class CategoryForm
                                     }
                                 })
                                 ->afterStateUpdated(function (Set $set, string $state) {
-                                    if ($state === 'sub' && ! Category::query()->exists()) {
+                                    if ($state === 'sub' && ! Category::query()->whereNull('parent_id')->exists()) {
                                         Notification::make()
                                             ->title('İşlem Engellendi')
                                             ->body('Sistemde kayıtlı hiç "Ana Kategori" yok. Önce Ana Kategori oluşturmalısınız.')
@@ -53,6 +53,7 @@ class CategoryForm
                                     }
                                 }),
                             Select::make('parent_id')
+                                ->label('Üst Kategori')
                                 ->columnSpanFull()
                                 ->relationship(
                                     name: 'parent',
@@ -66,7 +67,6 @@ class CategoryForm
                                         }
                                     }
                                 )
-                                ->label('Üst Kategori')
                                 ->searchable()
                                 ->preload()
                                 ->placeholder(function (Get $get, ?Category $record) {
@@ -90,26 +90,17 @@ class CategoryForm
                                     return ! $query->exists();
                                 })
                                 ->visible(fn(Get $get): bool => $get('menu_type') === 'sub' && Category::query()->exists())
-                                ->required(fn(Get $get): bool => $get('menu_type') === 'sub' && Category::query()->exists())->validationMessages([
-                                    'required' => '"Alt Kategori" türünü seçtiğiniz için bir üst kategori seçmelisiniz.',
-                                ]),
+                                ->required(fn(Get $get): bool => $get('menu_type') === 'sub' && Category::query()->exists()),
                             TextInput::make('name')
                                 ->label('Ad')
                                 ->columnSpanFull()
                                 ->required()
-                                ->maxLength(255)
-                                ->validationMessages([
-                                    'required' => ':attribute zorunludur.',
-                                    'max' => ':attribute en fazla :max karakter olabilir.',
-                                ]),
+                                ->maxLength(255),
                             Textarea::make('description')
                                 ->label('Açıklama')
                                 ->rows(4)
                                 ->columnSpanFull()
-                                ->maxLength(500)
-                                ->validationMessages([
-                                    'max' => ':attribute en fazla :max karakter olabilir.',
-                                ]),
+                                ->maxLength(500),
                         ]),
                     Section::make('Sıralama ve Görünüm')
                         ->icon('heroicon-m-adjustments-horizontal')
@@ -121,12 +112,7 @@ class CategoryForm
                                 ->default(0)
                                 ->required()
                                 ->numeric()
-                                ->minValue(0)
-                                ->validationMessages([
-                                    'required' => ':attribute zorunludur.',
-                                    'numeric' => ':attribute sayısal bir değer olmalıdır.',
-                                    'min' => ':attribute en az :min olmalıdır.',
-                                ]),
+                                ->minValue(0),
                             Toggle::make('status')
                                 ->live()
                                 ->label(fn(Get $get): string => $get('status') ? 'Görünür' : 'Gizli')

@@ -35,10 +35,20 @@ return new class extends Migration
             $table->unsignedBigInteger('like_count')->default(0);
             $table->boolean('is_featured')->default(false);
             $table->timestamp('published_at')->nullable();
-            $table->boolean('status')->default(false);
+            $table->tinyInteger('status')->default(0); // 0: Taslak, 1: Onay Bekliyor, 2: Yayında, 3: Reddedildi
 
             $table->timestamps();
             $table->softDeletes();
+        });
+
+        Schema::create('post_histories', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('post_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('action'); // İşlem tipi (Oluşturuldu, Onaya Gönderildi vs.)
+            $table->text('description')->nullable();
+            $table->json('payload')->nullable();
+            $table->timestamps();
         });
     }
 
@@ -47,6 +57,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('post_histories');
         Schema::dropIfExists('posts');
     }
 };

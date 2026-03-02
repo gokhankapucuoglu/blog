@@ -9,11 +9,16 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Forms\Components\Radio;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class CategoriesTable
@@ -66,14 +71,21 @@ class CategoriesTable
                     ->sortable(),
                 TextColumn::make('created_at')
                     ->label('Oluşturulma Tarihi')
-                    ->dateTime()
-                    ->formatStateUsing(fn($state) => $state ? $state->format('d/m/Y H:i') : '-')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 TrashedFilter::make(),
-            ])
+                TernaryFilter::make('parent_id')
+                    ->label('Tür')
+                    ->placeholder('Tümü')
+                    ->trueLabel('Ana Kategori')
+                    ->falseLabel('Alt Kategori')
+                    ->queries(
+                        true: fn($query) => $query->whereNull('parent_id'),
+                        false: fn($query) => $query->whereNotNull('parent_id'),
+                    ),
+            ], layout: FiltersLayout::Modal)
             ->recordActions([
                 EditAction::make()
                     ->hiddenLabel()
@@ -82,14 +94,7 @@ class CategoriesTable
                 DeleteAction::make()
                     ->hiddenLabel()
                     ->size('lg')
-                    ->tooltip(function (Category $record) {
-                        if ($record->children()->exists()) {
-                            return 'Bu kategoriye bağlı alt kategoriler var. Önce onları silmelisiniz.';
-                        }
-
-                        return 'Kategoriyi Sil';
-                    })
-                    ->disabled(fn(Category $record) => $record->children()->exists()),
+                    ->tooltip('Sil'),
                 RestoreAction::make()
                     ->hiddenLabel()
                     ->size('lg')

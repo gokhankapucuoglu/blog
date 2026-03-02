@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Category;
 use App\Models\Post;
+use App\Models\PostHistory;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -15,50 +16,108 @@ class PostSeeder extends Seeder
      */
     public function run(): void
     {
-        $admin = User::first();
-        $author = User::where('id', '!=', $admin->id)->first();
-        $category = Category::whereNotNull('parent_id')->first();
+        $admins = User::role(['super_admin', 'admin'])->get();
+        $authors = User::role('author')->get();
 
-        $posts = [
-            [
-                'user_id' => $admin->id,
-                'title' => 'Laravel 11 ile Gelen Yenilikler',
-                'content' => 'Bu yazıda Laravel 11 sürümüyle gelen minimalist yapıyı inceliyoruz...',
-                'status' => 2,
-                'published_at' => now()->subDays(2),
-            ],
-            [
-                'user_id' => $author->id,
-                'title' => 'Geleceğin Teknolojisi: Yapay Zeka',
-                'content' => 'Yapay zeka dünyasında bizi neler bekliyor? İşte detaylar...',
-                'status' => 1,
-                'published_at' => null,
-            ],
-            [
-                'user_id' => $author->id,
-                'title' => 'Zamanlanmış Bir Post Testi',
-                'content' => 'Bu post onaylı olsa bile tarihi gelecekte olduğu için görünmemeli.',
-                'status' => 2,
-                'published_at' => now()->addDays(5),
-            ],
-            [
-                'user_id' => $admin->id,
-                'title' => 'Taslak Olarak Kalan Bir Yazı',
-                'content' => 'Bu yazı henüz bitmediği için yazar tarafından taslakta bırakıldı.',
-                'status' => 0,
-                'published_at' => null,
-            ],
-        ];
+        $adminIds = $admins->pluck('id')->toArray();
+        $authorIds = $authors->pluck('id')->toArray();
+        $allUserIds = array_merge($adminIds, $authorIds);
 
-        foreach ($posts as $post) {
-            Post::create(array_merge($post, [
-                'category_id' => $category->id,
-                'slug' => Str::slug($post['title']),
-                'description' => Str::limit($post['content'], 150),
-                'image' => 'default.jpg',
-                'tags' => ['yazilim', 'test', 'laravel'],
-                'view_count' => rand(100, 5000),
-            ]));
+        $categoryIds = Category::whereNotNull('parent_id')->pluck('id')->toArray();
+        if (empty($categoryIds)) {
+            $categoryIds = Category::pluck('id')->toArray();
+        }
+
+        $tagsPool = ['yazılım', 'test', 'laravel', 'php', 'filament', 'teknoloji', 'yapay-zeka', 'web', 'tasarım'];
+
+        for ($i = 1; $i <= 30; $i++) {
+            $userId = fake()->randomElement($allUserIds);
+            $isAdmin = in_array($userId, $adminIds);
+
+            $status = $isAdmin ? fake()->randomElement([0, 2]) : fake()->randomElement([0, 1, 2, 3]);
+
+            $publishedAt = null;
+            if ($status === 2) {
+                $publishedAt = fake()->boolean(80)
+                    ? fake()->dateTimeBetween('-3 months', 'now')
+                    : fake()->dateTimeBetween('now', '+2 weeks');
+            }
+
+            $title = fake()->sentence(rand(4, 8));
+            $content = fake()->paragraphs(rand(3, 7), true);
+
+            $post = Post::create([
+                'user_id'      => $userId,
+                'category_id'  => fake()->randomElement($categoryIds),
+                'title'        => rtrim($title, '.'),
+                'slug'         => Str::slug($title),
+                'content'      => $content,
+                'description'  => Str::limit($content, 150),
+                'status'       => $status,
+                'published_at' => $publishedAt,
+                'image'        => 'default.jpg',
+                'tags'         => fake()->randomElements($tagsPool, rand(2, 4)),
+                'view_count'   => rand(50, 10000),
+                'created_at'   => fake()->dateTimeBetween('-4 months', '-1 month'),
+            ]);
+
+            PostHistory::create([
+                'post_id'     => $post->id,
+                'user_id'     => $userId,
+                'action'      => 'Oluşturuldu',
+                'description' => 'Yazı taslak olarak oluşturuldu.',
+                'created_at'  => $post->created_at,
+            ]);
+
+            if ($status === 1) {
+                PostHistory::create([
+                    'post_id'     => $post->id,
+                    'user_id'     => $userId,
+                    'action'      => 'Onaya Gönderildi',
+                    'description' => 'Yazar tarafından admin onayına sunuldu.',
+                    'created_at'  => $post->created_at->addHours(2),
+                ]);
+            }
+            elseif ($status === 2) {
+                if (! $isAdmin) {
+                    PostHistory::create([
+                        'post_id'     => $post->id,
+                        'user_id'     => $userId,
+                        'action'      => 'Onaya Gönderildi',
+                        'description' => 'Yazar tarafından admin onayına sunuldu.',
+                        'created_at'  => $post->created_at->addHours(2),
+                    ]);
+                }
+
+                $approverId = $isAdmin ? $userId : fake()->randomElement($adminIds);
+
+                PostHistory::create([
+                    'post_id'     => $post->id,
+                    'user_id'     => $approverId,
+                    'action'      => $publishedAt > now() ? 'Planlandı' : 'Yayınlandı',
+                    'description' => $isAdmin && $approverId === $userId
+                        ? 'Admin tarafından kendi yazısı yayına alındı.'
+                        : 'Admin tarafından onaylandı.',
+                    'created_at'  => $post->created_at->addHours(5),
+                ]);
+            }
+            elseif ($status === 3) {
+                PostHistory::create([
+                    'post_id'     => $post->id,
+                    'user_id'     => $userId,
+                    'action'      => 'Onaya Gönderildi',
+                    'description' => 'Yazar tarafından admin onayına sunuldu.',
+                    'created_at'  => $post->created_at->addHours(2),
+                ]);
+
+                PostHistory::create([
+                    'post_id'     => $post->id,
+                    'user_id'     => fake()->randomElement($adminIds),
+                    'action'      => 'Reddedildi',
+                    'description' => 'Sebebi: ' . fake()->sentence(),
+                    'created_at'  => $post->created_at->addHours(5),
+                ]);
+            }
         }
     }
 }

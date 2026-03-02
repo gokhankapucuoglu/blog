@@ -2,13 +2,17 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
-use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class UserForm
 {
@@ -29,26 +33,14 @@ class UserForm
                                 ->required()
                                 ->maxLength(20)
                                 ->unique()
-                                ->alphaDash()
-                                ->validationMessages([
-                                    'required' => ':attribute zorunludur.',
-                                    'max' => ':attribute en fazla :max karakter olabilir.',
-                                    'unique' => ':attribute zaten alınmış.',
-                                    'alpha_dash' => ':attribute sadece harf, rakam, tire (-) ve alt çizgi (_) içerebilir.',
-                                ]),
+                                ->alphaDash(),
                             TextInput::make('email')
                                 ->prefixIcon('heroicon-m-envelope')
                                 ->label('E-posta')
                                 ->required()
                                 ->maxLength(255)
                                 ->email()
-                                ->unique()
-                                ->validationMessages([
-                                    'required' => ':attribute zorunludur.',
-                                    'max' => ':attribute en fazla :max karakter olabilir.',
-                                    'email' => 'Geçerli bir :attribute giriniz.',
-                                    'unique' => ':attribute zaten kayıtlı.',
-                                ]),
+                                ->unique(),
                             TextInput::make('password')
                                 ->label('Şifre')
                                 ->prefixIcon('heroicon-m-lock-closed')
@@ -61,45 +53,28 @@ class UserForm
                                 ->revealable()
                                 ->confirmed()
                                 ->live(onBlur: true)
-                                ->dehydrated(fn($state) => filled($state))
-                                ->validationMessages([
-                                    'required' => ':attribute zorunludur.',
-                                    'min' => ':attribute en az :min karakter olmalıdır.',
-                                    'regex' => ':attribute en az 1 büyük harf, 1 küçük harf, 1 rakam ve 1 özel karakter içermelidir.',
-                                    'confirmed' => ':attribute doğrulaması eşleşmiyor.',
-                                ]),
+                                ->dehydrated(fn($state) => filled($state)),
                             TextInput::make('password_confirmation')
                                 ->label('Şifre Tekrar')
                                 ->prefixIcon('heroicon-m-lock-closed')
                                 ->placeholder(fn(string $operation): ?string => $operation === 'create' ? null : 'Değiştirmek istemiyorsanız boş bırakın')
-                                ->required(fn(string $operation, Get $get): bool => $operation === 'create' || filled($get('password')))->saved(false)
+                                ->required(fn(string $operation, Get $get): bool => $operation === 'create' || filled($get('password')))->dehydrated(false)
                                 ->same('password')
                                 ->password()
-                                ->revealable()
-                                ->validationMessages([
-                                    'required' => ':attribute zorunludur.',
-                                    'same' => 'Şifre alanı ile eşleşmelidir.',
-                                ]),
+                                ->revealable(),
                             Select::make('roles')
-                                ->relationship('roles', 'name')
-                                ->label('Roller')
+                                ->relationship(
+                                    name: 'roles',
+                                    titleAttribute: 'name',
+                                    modifyQueryUsing: fn($query) => Auth::user()?->hasRole('super_admin') ? $query : $query->where('name', '!=', 'super_admin'),
+                                )->label('Roller')
                                 ->prefixIcon('heroicon-m-shield-check')
                                 ->multiple()
                                 ->required()
                                 ->preload()
                                 ->searchable()
                                 ->columnSpanFull()
-                                ->getOptionLabelFromRecordUsing(fn($record) => match ($record->name) {
-                                    'super_admin' => 'Süper Admin',
-                                    'admin'       => 'Admin',
-                                    'editor'      => 'Editör',
-                                    'author'      => 'Yazar',
-                                    'user'        => 'Kullanıcı',
-                                    default       => $record->name,
-                                })
-                                ->validationMessages([
-                                    'required' => ':attribute zorunludur.',
-                                ]),
+                                ->getOptionLabelFromRecordUsing(fn($record) => __('roles.' . $record->name)),
                         ]),
                     Grid::make(1)->columnSpan(1)->schema([
                         Section::make('Kimlik Bilgileri')
@@ -109,22 +84,12 @@ class UserForm
                                     ->label('Ad')
                                     ->required()
                                     ->maxLength(255)
-                                    ->regex('/^[\pL\s]+$/u')
-                                    ->validationMessages([
-                                        'required' => ':attribute zorunludur.',
-                                        'max' => ':attribute en fazla :max karakter olabilir.',
-                                        'regex' => ':attribute sadece harf ve boşluk içerebilir.',
-                                    ]),
+                                    ->regex('/^[\pL\s]+$/u'),
                                 TextInput::make('surname')
                                     ->label('Soyad')
                                     ->required()
                                     ->maxLength(255)
-                                    ->regex('/^[\pL\s]+$/u')
-                                    ->validationMessages([
-                                        'required' => ':attribute zorunludur.',
-                                        'max' => ':attribute en fazla :max karakter olabilir.',
-                                        'regex' => ':attribute sadece harf ve boşluk içerebilir.',
-                                    ]),
+                                    ->regex('/^[\pL\s]+$/u'),
                             ]),
                         Section::make('Durum')
                             ->icon('heroicon-m-information-circle')
@@ -142,6 +107,18 @@ class UserForm
                                             ? 'Şu an kullanıcı sisteme giriş yapabilir.'
                                             : 'Kullanıcı engellenmiştir, giriş yapamaz.'
                                     )
+                                    ->afterStateUpdated(function (Set $set, $state, ?Model $record) {
+                                        if ($record && $record->id === Auth::id() && $state === false) {
+
+                                            $set('status', true);
+
+                                            Notification::make()
+                                                ->title('Engellendi')
+                                                ->body('Kendi hesabınızı pasif yapamazsınız.')
+                                                ->danger()
+                                                ->send();
+                                        }
+                                    }),
                             ]),
                     ]),
                 ]),

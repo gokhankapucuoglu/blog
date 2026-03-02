@@ -13,4 +13,15 @@ class CreateCategory extends CreateRecord
     {
         return $this->getResource()::getUrl('index');
     }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        if (isset($data['menu_type']) && $data['menu_type'] === 'main') {
+            $data['parent_id'] = null;
+        }
+
+        unset($data['menu_type']);
+
+        return $data;
+    }
 }
