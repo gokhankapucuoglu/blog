@@ -99,8 +99,7 @@ class PostForm
                                 ->default(false)
                                 ->onIcon('heroicon-m-star')
                                 ->offIcon('heroicon-m-minus')
-                                ->onColor('warning')
-                                ->visible(fn() => Auth::user()?->hasRole(['super_admin', 'admin'])),
+                                ->onColor('warning'),
                             Checkbox::make('is_scheduled')
                                 ->label('İleri Tarihli Planla')
                                 ->live()

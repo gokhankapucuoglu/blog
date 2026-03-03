@@ -11,6 +11,11 @@ class ViewPost extends ViewRecord
 {
     protected static string $resource = PostResource::class;
 
+    public function getHeading(): string
+    {
+        return '';
+    }
+
     protected function getHeaderActions(): array
     {
         return [

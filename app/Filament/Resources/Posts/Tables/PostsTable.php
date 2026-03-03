@@ -50,7 +50,7 @@ class PostsTable
                 ImageColumn::make('image')
                     ->label('Resim')
                     ->disk('public')
-                    ->defaultImageUrl('https://ui-avatars.com/api/?name=Gorsel+Yok&color=7F9CF5&background=EBF4FF')
+                    ->defaultImageUrl('https://placehold.co/800x500/1a1a1a/ffffff?text=Gorsel+Yok')
                     ->width(120),
                 TextColumn::make('category.name')
                     ->label('Kategori')

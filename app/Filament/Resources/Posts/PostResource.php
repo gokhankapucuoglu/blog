@@ -137,6 +137,7 @@ class PostResource extends Resource
                                 Group::make()->columnSpan(1)->components([
                                     ImageEntry::make('image')
                                         ->hiddenLabel()
+                                        ->defaultImageUrl(url("https://placehold.co/800x500/f8f9fa/a1a1aa?text=Gorsel+Yok"))
                                         ->disk('public')
                                         ->imageWidth('100%'),
                                     TextEntry::make('tags')

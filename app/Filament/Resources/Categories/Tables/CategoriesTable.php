@@ -45,8 +45,8 @@ class CategoriesTable
                     ->state(fn(Category $record): string => $record->parent_id ? 'Alt Kategori' : 'Ana Kategori')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
-                        'Ana Kategori' => 'warning',
-                        'Alt Kategori' => 'info',
+                        'Ana Kategori' => 'primary',
+                        'Alt Kategori' => 'gray',
                     })
                     ->sortable(query: function ($query, string $direction) {
                         return $query->orderBy('parent_id', $direction);
