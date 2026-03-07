@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Posts;
 use App\Filament\Resources\Posts\Pages\CreatePost;
 use App\Filament\Resources\Posts\Pages\EditPost;
 use App\Filament\Resources\Posts\Pages\ListPosts;
+use App\Filament\Resources\Posts\Pages\ManagePostComments;
 use App\Filament\Resources\Posts\Pages\ViewPost;
 use App\Filament\Resources\Posts\Schemas\PostForm;
 use App\Filament\Resources\Posts\Tables\PostsTable;
@@ -57,22 +58,47 @@ class PostResource extends Resource
 
     public static function getRecordSubNavigation(Page $page): array
     {
+        // Livewire sayfa değiştirse bile bu $record ASLA kaybolmaz!
         $record = $page->getRecord();
         $user = Auth::user();
 
         $navigationItems = [
-            ViewPost::class,
+            Pages\ViewPost::class,
         ];
 
         $isAdmin = $user?->hasRole(['super_admin', 'admin']);
         $isOwner = $user?->id === $record->user_id;
 
-        // Sekme kuralı: Admin her zaman, yazar taslak ve ret ise düzenleme sekmesini görür
         if ($isAdmin || ($isOwner && in_array($record->status, [0, 3]))) {
-            $navigationItems[] = EditPost::class;
+            $navigationItems[] = Pages\EditPost::class;
         }
 
-        return $page->generateNavigationItems($navigationItems);
+        if ($isAdmin || $isOwner) {
+            $navigationItems[] = Pages\ManagePostComments::class;
+        }
+
+        $items = $page->generateNavigationItems($navigationItems);
+
+        // ONAY BEKLEYEN yorumları sayalım (Artık URL'den değil, direkt garantili modelden çekiyoruz)
+        $pendingCount = $record->comments()->where('status', \App\Models\Comment::STATUS_PENDING)->count();
+
+        foreach ($items as $item) {
+            // Yorumlar sekmesini bul
+            if ($item->getLabel() === Pages\ManagePostComments::getNavigationLabel() || $item->getLabel() === 'Yorumlar') {
+
+                // 1. ROZET: Sadece onay bekleyen varsa (0'dan büyükse) sarı rozeti tak
+                if ($pendingCount > 0) {
+                    $item->badge((string) $pendingCount, 'warning');
+                }
+
+                // 2. AKTİFLİK: Sayfalama (Livewire) yapıldığında sekme mavi kalmaya devam etsin
+                if ($page instanceof Pages\ManagePostComments) {
+                    $item->isActiveWhen(fn() => true);
+                }
+            }
+        }
+
+        return $items;
     }
 
     public static function getPages(): array
@@ -82,6 +108,7 @@ class PostResource extends Resource
             'create' => CreatePost::route('/create'),
             'view' => ViewPost::route('/{record}'),
             'edit' => EditPost::route('/{record}/edit'),
+            'comments' => ManagePostComments::route('/{record}/comments'),
         ];
     }
 
@@ -156,6 +183,53 @@ class PostResource extends Resource
                             TextEntry::make('content')
                                 ->hiddenLabel()
                                 ->html(),
+                        ]),
+
+                    Section::make('Onaylanmış Yorumlar')
+                        ->icon('heroicon-m-chat-bubble-left-right')
+                        ->collapsible()
+                        ->components([
+                            RepeatableEntry::make('approvedMainComments')
+                                ->hiddenLabel()
+                                ->placeholder('Bu gönderi için henüz onaylanmış bir yorum bulunmuyor.')
+                                ->components([
+                                    Grid::make(2)->components([
+                                        TextEntry::make('user.full_name')
+                                            ->hiddenLabel()
+                                            ->icon('heroicon-m-user')
+                                            ->weight('bold'),
+                                        TextEntry::make('created_at')
+                                            ->hiddenLabel()
+                                            ->since()
+                                            ->color('gray')
+                                            ->alignEnd(),
+                                    ]),
+                                    TextEntry::make('body')
+                                        ->hiddenLabel()
+                                        ->html(),
+
+                                    RepeatableEntry::make('approvedReplies')
+                                        ->hiddenLabel()
+                                        ->visible(fn($record) => $record->approvedReplies()->count() > 0)->contained(false)
+                                        ->components([
+                                            Grid::make(2)->components([
+                                                TextEntry::make('user.full_name')
+                                                    ->hiddenLabel()
+                                                    ->icon('heroicon-m-arrow-turn-down-right')
+                                                    ->color('info')
+                                                    ->weight('bold'),
+                                                TextEntry::make('created_at')
+                                                    ->hiddenLabel()
+                                                    ->since()
+                                                    ->color('gray')
+                                                    ->alignEnd(),
+                                            ]),
+                                            TextEntry::make('body')
+                                                ->hiddenLabel()
+                                                ->color('gray'),
+                                        ]),
+                                ])
+                                ->columns(1),
                         ]),
                 ]),
 

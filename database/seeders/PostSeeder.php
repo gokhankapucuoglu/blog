@@ -30,7 +30,6 @@ class PostSeeder extends Seeder
 
         $tagsPool = ['yazılım', 'test', 'laravel', 'php', 'filament', 'teknoloji', 'yapay-zeka', 'web', 'tasarım', 'react', 'vue'];
 
-        // Gerçekçi Teknoloji ve Yazılım Başlıkları Havuzu
         $realisticTitles = [
             'Laravel 11 ile Gelen Harika Yenilikler ve Performans İyileştirmeleri',
             'Yapay Zeka Destekli Kodlama: GitHub Copilot Geleceği Nasıl Şekillendiriyor?',
@@ -49,7 +48,6 @@ class PostSeeder extends Seeder
             'Uzaktan Çalışma (Remote Work) Kültüründe Verimliliği Artırma Yolları'
         ];
 
-        // Gerçekçi Türkçe İçerik Paragrafları
         $realisticParagraphs = [
             "Teknoloji dünyası her geçen gün büyük bir hızla evrilmeye devam ediyor. Geliştiriciler olarak bu hıza ayak uydurmak ve modern araçları projelerimize entegre etmek en büyük önceliğimiz haline geldi. Sektördeki en son gelişmeler, kullandığımız framework'lerin yeni sürümleriyle birlikte iş akışlarımızı tamamen değiştiriyor.",
             "Özellikle son dönemde çıkan güncellemelerle birlikte, performans tarafında ciddi iyileştirmeler yapıldı. Eskiden saatler süren yapılandırma işlemleri artık dakikalar içinde çözülebiliyor. Kodun okunabilirliği ve sürdürülebilirliği açısından sunulan yeni standartlar, takım çalışmasını çok daha verimli bir hale getiriyor.",
@@ -70,13 +68,10 @@ class PostSeeder extends Seeder
                     : fake()->dateTimeBetween('now', '+2 weeks');
             }
 
-            // Gerçekçi başlık ve içerik atamaları
-            $title = fake()->randomElement($realisticTitles) . ' - ' . rand(1, 99); // Başlıkların benzersiz olması için ufak bir rakam
+            $title = fake()->randomElement($realisticTitles) . ' - ' . rand(1, 99);
 
-            // 3-4 paragraftan oluşan mantıklı bir makale metni oluştur
             $content = "<p>" . $realisticParagraphs[0] . "</p><p>" . $realisticParagraphs[1] . "</p><p>" . $realisticParagraphs[2] . "</p>";
 
-            // Eğer daha uzun olsun dersek 4. paragrafı da ekleyelim
             if (fake()->boolean(50)) {
                 $content .= "<p>" . $realisticParagraphs[3] . "</p>";
             }
@@ -90,23 +85,21 @@ class PostSeeder extends Seeder
                 'description'  => Str::limit(strip_tags($content), 150),
                 'status'       => $status,
                 'published_at' => $publishedAt,
-                'image'        => 'default.jpg', // Önyüzdeki (frontend) harika yer tutucu (placeholder) çalışsın diye null bırakıyoruz
+                'image'        => 'default.jpg',
                 'tags'         => fake()->randomElements($tagsPool, rand(2, 4)),
                 'view_count'   => rand(50, 10000),
                 'created_at'   => fake()->dateTimeBetween('-4 months', '-1 month'),
             ]);
 
-            // 1. ADIM: Her yazı önce bir oluşturulur
             PostHistory::create([
                 'post_id'     => $post->id,
                 'user_id'     => $userId,
                 'action'      => 'Oluşturuldu',
-                'description' => 'Güncelleme işlemi yapıldı.', // Taslak veya ilk kayıt mantığı
+                'description' => 'Güncelleme işlemi yapıldı.',
                 'created_at'  => $post->created_at,
             ]);
 
-            // 2. ADIM: Statülere Göre Aksiyon Geçmişleri (Actions'dan birebir alındı)
-            if ($status === 1) { // Onay Bekliyor
+            if ($status === 1) {
                 PostHistory::create([
                     'post_id'     => $post->id,
                     'user_id'     => $userId,
@@ -115,7 +108,7 @@ class PostSeeder extends Seeder
                     'created_at'  => $post->created_at->addHours(2),
                 ]);
             }
-            elseif ($status === 2) { // Yayınlandı / Planlandı
+            elseif ($status === 2) {
                 if (! $isAdmin) {
                     PostHistory::create([
                         'post_id'     => $post->id,
@@ -129,7 +122,6 @@ class PostSeeder extends Seeder
                 $approverId = $isAdmin ? $userId : fake()->randomElement($adminIds);
                 $isFuture = $publishedAt > now();
 
-                // Onaylanma / Yayınlanma Logu (PostActions'a %100 uyumlu)
                 PostHistory::create([
                     'post_id'     => $post->id,
                     'user_id'     => $approverId,
@@ -140,7 +132,7 @@ class PostSeeder extends Seeder
                     'created_at'  => $post->created_at->addHours(5),
                 ]);
             }
-            elseif ($status === 3) { // Reddedildi
+            elseif ($status === 3) {
                 PostHistory::create([
                     'post_id'     => $post->id,
                     'user_id'     => $userId,

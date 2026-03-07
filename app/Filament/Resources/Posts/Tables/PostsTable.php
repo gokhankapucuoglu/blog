@@ -106,6 +106,14 @@ class PostsTable
                     ->iconColor('danger')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('comments_count')
+                    ->counts('comments')
+                    ->label('Yorum')
+                    ->color('info')
+                    ->icon('heroicon-m-chat-bubble-left-ellipsis')
+                    ->iconColor('info')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 ToggleColumn::make('is_featured')
                     ->label('Öne Çıkan')
                     ->onIcon('heroicon-m-star')

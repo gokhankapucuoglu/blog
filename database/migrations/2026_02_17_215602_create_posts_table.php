@@ -43,7 +43,7 @@ return new class extends Migration
 
         Schema::create('post_histories', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('post_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('post_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('action'); // İşlem tipi (Oluşturuldu, Onaya Gönderildi vs.)
             $table->text('description')->nullable();

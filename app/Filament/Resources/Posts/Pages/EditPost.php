@@ -41,26 +41,6 @@ class EditPost extends EditRecord
         }
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        if (isset($data['status']) && $data['status'] === 2 && $this->getRecord()->status != 2) {
-            $publishedAt = isset($data['published_at'])
-                ? Carbon::parse($data['published_at'])
-                : now();
-
-            if ($publishedAt->isPast()) {
-                $data['published_at'] = now();
-
-                Notification::make()
-                    ->title('Tarih Güncellendi')
-                    ->body('Planlanan tarih geçmişte kaldığı için şu anki zaman olarak ayarlandı.')
-                    ->info()
-                    ->send();
-            }
-        }
-        return $data;
-    }
-
     protected function afterSave(): void
     {
         PostHistory::create([

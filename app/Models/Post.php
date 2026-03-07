@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Category;
+use App\Models\Comment;
 use App\Traits\UserRelationTrait;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,11 @@ use Spatie\Sluggable\SlugOptions;
 class Post extends Model
 {
     use SoftDeletes, HasSlug, UserRelationTrait;
+
+    const STATUS_DRAFT      = 0;
+    const STATUS_PENDING    = 1;
+    const STATUS_PUBLISHED  = 2;
+    const STATUS_REJECTED   = 3;
 
     protected $fillable = [
         'user_id',
@@ -56,17 +62,16 @@ class Post extends Model
 
     public function getStatusLabelAttribute(): string
     {
-        // Eğer durum 2 ise ve yayın tarihi gelecek bir tarihse Nullsafe operatörü ile kontrol et
-        if ($this->status === 2 && $this->published_at?->isFuture()) {
+        if ($this->status === self::STATUS_PUBLISHED && $this->published_at?->isFuture()) {
             return 'Planlandı';
         }
 
         return match ($this->status) {
-            0 => 'Taslak',
-            1 => 'Onay Bekliyor',
-            2 => 'Yayında',
-            3 => 'Reddedildi',
-            default => 'Bilinmiyor',
+            self::STATUS_DRAFT     => 'Taslak',
+            self::STATUS_PENDING   => 'Onay Bekliyor',
+            self::STATUS_PUBLISHED => 'Yayında',
+            self::STATUS_REJECTED  => 'Reddedildi',
+            default                => 'Bilinmiyor',
         };
     }
 
@@ -100,5 +105,18 @@ class Post extends Model
     public function histories(): HasMany
     {
         return $this->hasMany(PostHistory::class)->latest();
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class)->latest();
+    }
+
+    public function approvedMainComments(): HasMany
+    {
+        return $this->hasMany(Comment::class)
+            ->where('status', Comment::STATUS_APPROVED)
+            ->whereNull('parent_id')
+            ->orderBy('created_at', 'asc');
     }
 }
